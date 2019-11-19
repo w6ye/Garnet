@@ -1,6 +1,5 @@
 from pymatgen.io.vasp import Vasprun
-from pymatgen.phasediagram.maker import PhaseDiagram
-from pymatgen.phasediagram.analyzer import PDAnalyzer
+from pymatgen.analysis.phase_diagram import PhaseDiagram
 from pymacy.qe import MVLQE
 from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen import MPRester
@@ -55,9 +54,8 @@ def get_pred_ehull(tote_calc, form_e_predict, form_e_calc, elements, composition
     ec = compat.process_entry(ec)
 
     pd = PhaseDiagram(all_entries + [ec])
-    analyzer = PDAnalyzer(pd)
 
-    decomp, ehull = analyzer.get_decomp_and_e_above_hull(ec)
+    decomp, ehull = pd.get_decomp_and_e_above_hull(ec)
 
     return ec.uncorrected_energy, ehull
 
@@ -91,9 +89,8 @@ def get_ehull(entry_dict, dbpath=os.path.join(MODULE_DIR, 'tools/cal_db.json'), 
         entries = filter(lambda e: e.composition.reduced_formula not in exclude_list, entries)
 
     pd = PhaseDiagram(entries + [entry])
-    analyzer = PDAnalyzer(pd)
 
-    decomp, ehull = analyzer.get_decomp_and_e_above_hull(entry)
+    decomp, ehull = pd.get_decomp_and_e_above_hull(entry)
 
     return (ehull)
 
