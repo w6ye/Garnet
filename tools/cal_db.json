@@ -1,0 +1,12 @@
+{
+    "admin_password": "MBtZ7Y!@mtUI4Jt3uI",
+    "admin_user": "hulk", 
+    "aliases_config": null, 
+    "collection": "calculations", 
+    "database": "groupdb",
+    "host": "mavrldb.ucsd.edu",  
+    "mapi_key": "xNebFpxTfLhTnnIH",
+    "port": 27017, 
+    "readonly_password": "cYCgS%3sVYP&rj7tDm",
+    "readonly_user": "banner"
+}

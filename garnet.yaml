@@ -1,0 +1,2 @@
+keys: [a_eneg, a_radius, c_eneg, c_radius, d_eneg, d_radius]
+optimize_model_folder: ../data/models/2017-10-24/k_disorder_ANN2_25_3/model_0.3162/

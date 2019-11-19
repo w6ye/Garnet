@@ -1,0 +1,23 @@
+#!/bin/bash -l
+#SBATCH -J Ga12Er12Al8O48_elestic_relax
+#SBATCH -p regular
+#SBATCH -C knl,quad,cache
+#SBATCH -N 4
+#SBATCH -t 2:00:00
+#SBATCH --mail-type=ALL      # notifications for job done & fail
+#SBATCH --mail-user=calculaiton@gmail.com # send-to address
+
+module load vasp/20170323-knl
+
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
+
+#To run 8 threads per task, which is recommended
+export OMP_NUM_THREADS=8
+#srun -n 256 -c32 --cpu_bind=cores ~/bin/vasp/vasp_gam
+srun -n 64 -c16 --cpu_bind=cores ~/bin/vasp-20170412-knl/vasp_std
+
+
+#Running 4 OpenMP threads per MPI task
+#export OMP_NUM_THREADS=4
+#srun -n 64 -c8 --cpu_bind=cores vasp_std
