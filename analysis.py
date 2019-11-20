@@ -2,9 +2,10 @@ from pymatgen.io.vasp import Vasprun
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 from pymacy.qe import MVLQE
 from pymatgen.entries.computed_entries import ComputedEntry
-from pymatgen import MPRester
+from pymatgen import MPRester, Composition
 from pymatgen.entries.compatibility import MaterialsProjectCompatibility
 import json
+from monty.serialization import loadfn
 
 import pandas as pd
 import os
@@ -14,7 +15,8 @@ MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 json_path = os.path.join(MODULE_DIR, 'tools/ox_table.json')
 with open(json_path, 'r') as f:
     ox_table = json.load(f)
-
+BINARY_OXIDES_PATH = os.path.join(MODULE_DIR, "tools/binary_oxides_entries_dict.json")
+BINARY_OXDIES_ENTRIES = loadfn(BINARY_OXIDES_PATH)
 
 def get_pred_ehull(tote_calc, form_e_predict, form_e_calc, elements, composition,
                         dbpath=os.path.join(MODULE_DIR, 'tools/cal_db.json')):
@@ -95,7 +97,7 @@ def get_ehull(entry_dict, dbpath=os.path.join(MODULE_DIR, 'tools/cal_db.json'), 
     return (ehull)
 
 
-def get_form_e_from_bio(entry_dict, factor='per_fu', energy=None):
+def get_form_e_from_bio(entry_dict, factor='per_atom', energy=None):
     """
 
     :param entry_dict:dict
@@ -109,41 +111,28 @@ def get_form_e_from_bio(entry_dict, factor='per_fu', energy=None):
     """
     entry = ComputedEntry.from_dict(entry_dict)
     if energy:
-        bio_form_e = energy
+        form_e = energy
     else:
-        bio_form_e = entry.uncorrected_energy
+        form_e = entry.uncorrected_energy
 
     m = MPRester()
 
-    for el, amt in entry.composition.items():
-        stable_bio_entry = None
+    for el, amt in entry.composition:
         if el.symbol == 'O':
             continue
-        if el.symbol == 'Yb':
-            stable_bio_entry = Vasprun(
-                os.path.join(MODULE_DIR, 'data/mp-2814_Yb16O24_vasprun.xml.relax2.gz')).get_computed_entry()
-        if el.symbol == 'Nb':
-            stable_bio_entry = Vasprun(
-                os.path.join(MODULE_DIR, 'data/ICSD_25750_Nb2O5_vasprun.xml.relax2.gz')).get_computed_entry()
-        if el.symbol == 'Eu':
-            stable_bio_entry = Vasprun(
-                os.path.join(MODULE_DIR, 'data/ICSD_40472_Eu2O3_vasprun.xml.relax2.gz')).get_computed_entry()
-
-        if not stable_bio_entry:
-            stable_bio_df = pd.DataFrame.from_csv(os.path.join(MODULE_DIR, 'tools/stable_binary_oxides_garnet.csv'))
-            stable_bio_id = stable_bio_df.loc[lambda df: df.specie == el.symbol]['mpid'].tolist()[0]
-            stable_bio_entry = m.get_entry_by_material_id(stable_bio_id,
-                                                          property_data=['e_above_hull', 'formation_energy_per_atom'])
-        min_e = stable_bio_entry.uncorrected_energy
-        amt_bio = stable_bio_entry.composition[el.name]
-        bio_form_e -= (amt / (amt_bio)) * min_e
-
+        if BINARY_OXDIES_ENTRIES.get(el.__str__()):
+            stable_ox_entry = BINARY_OXDIES_ENTRIES[el.__str__()]
+        else:
+            raise ValueError("No binary oxide entry for %s" % el.__str__())
+        min_e = stable_ox_entry.uncorrected_energy
+        amt_ox = stable_ox_entry.composition[el.name]
+        form_e -= (amt / amt_ox) * min_e
     f = entry.composition.num_atoms if factor == 'per_atom' else entry.composition.get_integer_formula_and_factor()[1]
+    return form_e/f
 
-    return bio_form_e / f
 
 
-def get_form_e_from_bio_perov(entry_dict, factor='per_fu', energy=None, spes=None):
+def get_form_e_from_bio_perov(entry_dict, factor='per_atom', energy=None, spes=None):
     """
     calculate formation energy for single perovskites
     :param entry_dict: dict
