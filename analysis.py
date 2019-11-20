@@ -1,3 +1,5 @@
+from collections import Counter
+
 from pymatgen.io.vasp import Vasprun
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 from pymacy.qe import MVLQE
@@ -17,6 +19,9 @@ with open(json_path, 'r') as f:
     ox_table = json.load(f)
 BINARY_OXIDES_PATH = os.path.join(MODULE_DIR, "tools/binary_oxides_entries_dict.json")
 BINARY_OXDIES_ENTRIES = loadfn(BINARY_OXIDES_PATH)
+SITE_INFO = {'c': {"num_atoms": 3, "max_ordering": 20, "cn": "VIII"},
+            'a': {"num_atoms": 2, "max_ordering": 7, "cn": "VI"},
+            'd': {"num_atoms": 3, "max_ordering": 18, "cn": "IV"}}
 
 def get_pred_ehull(tote_calc, form_e_predict, form_e_calc, elements, composition,
                         dbpath=os.path.join(MODULE_DIR, 'tools/cal_db.json')):
@@ -97,7 +102,7 @@ def get_ehull(entry_dict, dbpath=os.path.join(MODULE_DIR, 'tools/cal_db.json'), 
     return (ehull)
 
 
-def get_form_e_from_bio(entry_dict, factor='per_atom', energy=None):
+def get_form_e_from_bio(energy, species, factor='per_atom'):
     """
 
     :param entry_dict:dict
@@ -109,15 +114,16 @@ def get_form_e_from_bio(entry_dict, factor='per_atom', energy=None):
     :return: float
         formation energy from binary oxides (eV/atom)
     """
-    entry = ComputedEntry.from_dict(entry_dict)
-    if energy:
-        form_e = energy
-    else:
-        form_e = entry.uncorrected_energy
 
-    m = MPRester()
+    form_e = energy
+    spe_dict = Counter({})
+    for site in SITE_INFO:
+        spe_dict += Counter({spe.__str__(): round(SITE_INFO[site]['num_atoms'] \
+                                                  * species[site][spe]) \
+                             for spe in sorted(species[site], key=lambda x: species[site][x])})
+    composition = Composition(spe_dict)
 
-    for el, amt in entry.composition:
+    for el, amt in composition.items():
         if el.symbol == 'O':
             continue
         if BINARY_OXDIES_ENTRIES.get(el.__str__()):
@@ -127,7 +133,7 @@ def get_form_e_from_bio(entry_dict, factor='per_atom', energy=None):
         min_e = stable_ox_entry.uncorrected_energy
         amt_ox = stable_ox_entry.composition[el.name]
         form_e -= (amt / amt_ox) * min_e
-    f = entry.composition.num_atoms if factor == 'per_atom' else entry.composition.get_integer_formula_and_factor()[1]
+    f = composition.num_atoms if factor == 'per_atom' else composition.get_integer_formula_and_factor()[1]
     return form_e/f
 
 
